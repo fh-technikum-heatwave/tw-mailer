@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     else
     {
         cout << "Es wurden keine Parameter eingegeben\n";
-        return -1;
+        // return -1;
     }
 
     socklen_t addrlen;
