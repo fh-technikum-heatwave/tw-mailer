@@ -12,11 +12,11 @@
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
+#include <vector>
 
 using namespace std;
 
 #define BUF 1024
-#define PORT 6543
 
 int abortRequested = 0;
 int create_socket = -1;
@@ -29,10 +29,12 @@ int main(int argc, char *argv[])
 {
 
     string port;
+    int PORT;
     string mailDirectoryName;
     if (optind < argc)
     {
         port = argv[optind++];
+        PORT = stoi(port);
         if (optind < argc)
             mailDirectoryName = argv[optind++];
         else
@@ -144,17 +146,94 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
+bool senderInputs = false;
+int senderInputCounter = 0;
+
+struct
+{
+    string sender;
+    string reciver;
+    string subject;
+    string message;
+
+} senderInputData;
+
+void Send(int &inputCounter, char buffer[BUF])
+{
+
+    if (inputCounter == 1)
+    {
+        senderInputData.sender = buffer;
+    }
+    else if (inputCounter == 2)
+    {
+        senderInputData.reciver = buffer;
+    }
+    else if (inputCounter == 3)
+    {
+        senderInputData.subject = buffer;
+    }
+    else if (inputCounter > 3)
+    {
+        senderInputData.message += buffer;
+    }
+}
+
+void handleCommands(char buffer[BUF], int current_socket)
+{
+
+    if (senderInputs)
+    {
+        if (strcmp(buffer, ".") == 0)
+        {
+            senderInputs = false;
+            cout << senderInputData.message << "\n";
+            if (send(current_socket, "OK", 3, 0) == -1)
+            {
+                perror("send answer failed");
+                return;
+            }
+            return;
+        }
+
+        senderInputCounter++;
+
+        Send(senderInputCounter, buffer);
+
+        return;
+    }
+
+    // cout << buffer;
+
+    if (strcmp(buffer, "SEND") == 0)
+    {
+        senderInputs = true;
+    }
+    else if (strcmp(buffer, "LIST") == 0)
+    {
+    }
+    else if (strcmp(buffer, "READ") == 0)
+    {
+    }
+    else if (strcmp(buffer, "DEL") == 0)
+    {
+    }
+    else
+    {
+        cout << "ungültiger Befehl\n";
+    }
+}
+
 void *clientCommunication(void *data)
 {
     char buffer[BUF];
     int size;
     int *current_socket = (int *)data;
 
-    ////////////////////////////////////////////////////////////////////////////
-    // SEND welcome message
     strcpy(buffer, "Welcome to myserver!\r\nPlease enter your commands...\r\n");
     if (send(*current_socket, buffer, strlen(buffer), 0) == -1)
     {
+
         perror("send failed");
         return NULL;
     }
@@ -163,6 +242,7 @@ void *clientCommunication(void *data)
     {
 
         size = recv(*current_socket, buffer, BUF - 1, 0);
+
         if (size == -1)
         {
             if (abortRequested)
@@ -193,13 +273,17 @@ void *clientCommunication(void *data)
         }
 
         buffer[size] = '\0';
-        printf("Message received: %s\n", buffer); // ignore error
+        printf("Message received: %s\n", buffer);
 
-        if (send(*current_socket, "OK", 3, 0) == -1)
-        {
-            perror("send answer failed");
-            return NULL;
-        }
+        handleCommands(buffer, *current_socket);
+
+        // cout<<"Buffer " << buffer << "\n";
+
+        // if (send(*current_socket, "OK", 3, 0) == -1)
+        // {
+        //     perror("send answer failed");
+        //     return NULL;
+        // }
     } while (strcmp(buffer, "quit") != 0 && !abortRequested);
 
     if (*current_socket != -1)
