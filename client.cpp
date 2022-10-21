@@ -7,12 +7,13 @@
 #include <stdio.h>
 #include <string.h>
 
-
+#include <iostream>   
+#include <string> 
 
 #define BUF 1024
 #define PORT 6543
 
-
+using namespace std;
 
 int main(int argc, char **argv)
 {
@@ -21,7 +22,6 @@ int main(int argc, char **argv)
    struct sockaddr_in address;
    int size;
    int isQuit;
-
 
    if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
    {
@@ -32,16 +32,15 @@ int main(int argc, char **argv)
    memset(&address, 0, sizeof(address)); // init storage with 0
    address.sin_family = AF_INET;         // IPv4
 
-   address.sin_port = htons(PORT);
-
-
-   if (argc < 2)
+   if (argc < 3)
    {
-      inet_aton("127.0.0.1", &address.sin_addr);
+      printf("Missing Arguments! USAGE ==> client <IP> <PORT>");
+      return EXIT_FAILURE;
    }
    else
    {
       inet_aton(argv[1], &address.sin_addr);
+      address.sin_port = htons(stoi(argv[2]));
    }
 
    if (connect(create_socket,
