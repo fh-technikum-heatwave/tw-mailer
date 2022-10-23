@@ -15,6 +15,7 @@
 
 using namespace std;
 
+// TODO: receiveMessage printer
 
 // TODO: both functions require createSocket maybe put it in other scope so we dont have to pass it in all the time
 void sendMessage(char *message, int create_socket)
@@ -115,31 +116,61 @@ int main(int argc, char **argv)
             sendMessage(buffer, create_socket);
          } while (strcmp(buffer, ".\n") != 0);
 
-         printf("<< %s", receiveMessage(create_socket, buffer));
+         printf("<< %s\n", receiveMessage(create_socket, buffer));
+      } else if(strcmp(command, "LIST\n") == 0) {
+         
+         // Read Username
+         fgets(buffer, BUF, stdin);
+         sendMessage(buffer, create_socket);
+
+         int mail_count = stoi(receiveMessage(create_socket, buffer));
+         if(mail_count > 0) {
+            for (int i = 0; i < mail_count; i++)
+            {
+               sendMessage((char*)"OK", create_socket);
+               printf("<< %s\n", receiveMessage(create_socket, buffer));
+
+            }
+         }
+      } else if(strcmp(command, "READ\n") == 0) {
+         // Read Username
+         fgets(buffer, BUF, stdin);
+         sendMessage(buffer, create_socket);
+
+         // Read Message Number
+         fgets(buffer, BUF, stdin);
+         sendMessage(buffer, create_socket);
+
+         char* ok = receiveMessage(create_socket, buffer);
+         printf("<< %s\n", receiveMessage(create_socket, buffer));
+
+         if(strcmp(ok, "OK") == 0) {
+            do
+            {
+               sendMessage((char*)"OK", create_socket);
+               char* mailLine = receiveMessage(create_socket, buffer);
+               if(strcmp(mailLine, ".\n") == 0) break;
+               printf("<< %s\n", mailLine);
+            } while (true);
+         }
+      } else if(strcmp(command, "DEL\n") == 0) {
+                  // Read Username
+         fgets(buffer, BUF, stdin);
+         sendMessage(buffer, create_socket);
+
+         // Read Message Number
+         fgets(buffer, BUF, stdin);
+         sendMessage(buffer, create_socket);
+
+         printf("<< %s\n", receiveMessage(create_socket, buffer));
       }
 
-
+      // TODO: HANDLE UNWANTED INPUT
       
       isQuit = strcmp(command, "QUIT\n") == 0;
-      // if (fgets(buffer, BUF, stdin) != NULL)
-      // {
-      //    int size = strlen(buffer);
-      //    // remove new-line signs from string at the end
-      //    if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
-      //    {
-      //       size -= 2;
-      //       buffer[size] = 0;
-      //    }
-      //    else if (buffer[size - 1] == '\n')
-      //    {
-      //       --size;
-      //       buffer[size] = 0;
-      //    }
-      //    isQuit = strcmp(buffer, "quit") == 0;
-      // }
+   
    } while (!isQuit);
 
-   ////////////////////////////////////////////////////////////////////////////
    // CLOSES THE DESCRIPTOR
    if (create_socket != -1)
    {
