@@ -33,9 +33,8 @@ int create_socket = -1;
 int new_socket = -1;
 struct stat st = {0};
 
-void clientCommunication(int &data);
+void clientCommunication(int data);
 void signalHandler(int sig);
-void sendMessage(char *message, int socket);
 string mailDirectoryName;
 
 char *receiveMessage(char *buffer, int current_socket);
@@ -184,7 +183,7 @@ void createReceiverDirectory(string &directoryName)
 
     if (stat(temp.c_str(), &st) == -1)
     {
-        int ok = mkdir(temp.c_str(), 0700);
+        int ok = mkdir(temp.c_str(), 0777);
 
         if (!ok)
         {
@@ -220,82 +219,35 @@ void saveMessage()
     // fclose(fp);
 }
 
-void receiveMailData(char *buffer, int current_socket)
+void listMessagesOfUser(string &username)
 {
-    senderInputData.sender = receiveMessage(buffer, current_socket);
-    senderInputData.receiver = receiveMessage(buffer, current_socket);
-    senderInputData.subject = receiveMessage(buffer, current_socket);
-    while (true)
-    {
-        char *message = receiveMessage(buffer, current_socket);
-
-        if (strcmp(message, ".") == 0)
-        {
-            break;
-        }
-
-        senderInputData.message += message;
-        senderInputData.message += "\n";
-    }
-
-    saveMessage();
-    sendMessage("OK", current_socket);
+    DIR *dirp = opendir("");
 }
 
-vector<string> getUserMessages(string username, int socket)
+void receiveMailData(char *buffer, int current_socket)
 {
-    string tempPath = mailDirectoryName + "/" + username + "/";
-    cout << tempPath;
-    vector<string> filenames;
+    // senderInputData.sender = receiveMessage(buffer, current_socket);
+    // senderInputData.receiver = receiveMessage(buffer, current_socket);
+    // senderInputData.subject = receiveMessage(buffer, current_socket);
+    // // // // while (true)
+    // // {
+    // //     char *message = receiveMessage(buffer, current_socket);
 
-    int foundPath = stat(tempPath.c_str(), &st);
+    // //     if (strcmp(message, ".") == 0)
+    // //     {
+    // //         break;
+    // //         ;
+    // //     }
 
-    // cout << foundPath << "\n";
-    if (foundPath == -1)
-    {
-        cout << " Line 260" << endl;
-        sendMessage("0", socket);
-    }
-    else if (foundPath == 0)
-    {
-        cout << tempPath + "\n";
-
-        DIR *dirp = opendir(tempPath.c_str());
-
-        if (dirp != NULL)
-        {
-            struct dirent *dir_entry;
-            int c = 5;
-            while ((dir_entry = readdir(dirp)) != NULL || c == 0)
-            {
-                c--;
-                string name = dir_entry->d_name;
-                cout << "Name " << name;
-                if (dir_entry->d_type == DT_REG)
-                {
-                    cout << "Name " << name;
-                    filenames.push_back(name);
-                }
-            }
-            if (closedir(dirp) == -1)
-            {
-                cout << "Error Fehler beim Schliesen des verzeichnisses";
-            }
-        }
-        else
-        {
-            cout << "Verzeichnis konnte nicht gefunden werden\n";
-        }
-    }
-
-    return filenames;
+    // //     senderInputData.message += message;
+    // //     senderInputData.message += "\n";
+    // // }
 }
 
 void handleCommands(char buffer[BUF], int current_socket)
 {
-    cout << " in handle commands \n";
 
-    cout << buffer;
+    // cout << buffer;
 
     if (strcmp(buffer, "SEND") == 0)
     {
@@ -303,30 +255,17 @@ void handleCommands(char buffer[BUF], int current_socket)
     }
     else if (strcmp(buffer, "LIST") == 0)
     {
-        cout << "Inside List \n";
-        char *username = receiveMessage(buffer, current_socket);
-        cout << " username \n";
-        vector<string> filenames = getUserMessages(username, current_socket);
-        printf("AFTER FILENAMES");
-        string temp = filenames.size() + "";
-        sendMessage((char *)temp.c_str(), current_socket);
-        for (size_t i = 0; i < filenames.size(); i++)
-        {
-            // char* response = receiveMessage(buffer, current_socket);
-            // if(strcmp(response, "OK") == 0) {}
-            sendMessage((char *)filenames[i].c_str(), current_socket);
-        }
     }
     else if (strcmp(buffer, "READ") == 0)
     {
     }
     else if (strcmp(buffer, "DEL") == 0)
     {
-        char *username = receiveMessage(buffer, current_socket);
-        // TODO: Change to mail number
-        char *mail_subject = receiveMessage(buffer, current_socket);
+        // char *username = receiveMessage(buffer, current_socket);
+        // // TODO: Change to mail number
+        // char *mail_subject = receiveMessage(buffer, current_socket);
 
-        printf("Usename: %s  Subject: %s", username, mail_subject);
+        // printf("Usename: %s  Subject: %s", username, mail_subject);
     }
     else
     {
@@ -334,7 +273,7 @@ void handleCommands(char buffer[BUF], int current_socket)
     }
 }
 
-char *receiveMessage(char *buffer, int current_socket)
+char* receiveMessage(char buffer[BUF], int current_socket)
 {
 
     int size;
@@ -351,7 +290,6 @@ char *receiveMessage(char *buffer, int current_socket)
         }
         else
         {
-            cout << " Line 293 \n";
             perror("recv error");
         }
 
@@ -379,18 +317,7 @@ char *receiveMessage(char *buffer, int current_socket)
     return buffer;
 }
 
-void sendMessage(char *buffer, int socket)
-{
-    cout << "Line 388" << endl;
-
-    if (send(socket, buffer, strlen(buffer), 0) == -1)
-    {
-        perror("send answer failed");
-        // return NULL;
-    }
-}
-
-void clientCommunication(int &data)
+void clientCommunication(int data)
 {
     char buffer[BUF];
     int current_socket = data;
@@ -398,6 +325,7 @@ void clientCommunication(int &data)
     strcpy(buffer, "Welcome to myserver!\r\nPlease enter your commands...\r\n");
     if (send(current_socket, buffer, strlen(buffer), 0) == -1)
     {
+
         perror("send failed");
         // return NULL;
     }
@@ -406,15 +334,20 @@ void clientCommunication(int &data)
     do
     {
 
-        char *command = receiveMessage(buffer, current_socket);
+      
 
+        char *buffer = receiveMessage(buffer, current_socket);
         printf("Message received: %s\n", buffer);
 
-        cout << command;
-
-        handleCommands(command, current_socket);
+        handleCommands(buffer, current_socket);
 
         // cout<<"Buffer " << buffer << "\n";
+
+        // if (send(*current_socket, "OK", 3, 0) == -1)
+        // {
+        //     perror("send answer failed");
+        //     return NULL;
+        // }
 
     } while (strcmp(buffer, "quit") != 0 && !abortRequested);
 
