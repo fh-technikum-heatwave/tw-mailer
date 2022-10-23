@@ -24,6 +24,11 @@
 #include <mutex>
 #include <string.h>
 
+#include <string>
+#include <iostream>
+#include <filesystem>
+namespace fs = std::filesystem;
+
 using namespace std;
 
 #define BUF 1024
@@ -260,32 +265,8 @@ vector<string> getUserMessages(string username, int socket)
     {
         cout << tempPath + "\n";
 
-        DIR *dirp = opendir(tempPath.c_str());
-
-        if (dirp != NULL)
-        {
-            struct dirent *dir_entry;
-            int c = 5;
-            while ((dir_entry = readdir(dirp)) != NULL || c == 0)
-            {
-                c--;
-                string name = dir_entry->d_name;
-                cout << "Name " << name;
-                if (dir_entry->d_type == DT_REG)
-                {
-                    cout << "Name " << name;
-                    filenames.push_back(name);
-                }
-            }
-            if (closedir(dirp) == -1)
-            {
-                cout << "Error Fehler beim Schliesen des verzeichnisses";
-            }
-        }
-        else
-        {
-            cout << "Verzeichnis konnte nicht gefunden werden\n";
-        }
+        for (const auto &entry : fs::directory_iterator(tempPath))
+            cout << entry.path() << endl;
     }
 
     return filenames;
