@@ -14,6 +14,15 @@
 #include <stdio.h>
 #include <vector>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <unistd.h>
+
+#include <dirent.h>
+#include <errno.h>
+#include <mutex>
+
 using namespace std;
 
 #define BUF 1024
@@ -21,16 +30,18 @@ using namespace std;
 int abortRequested = 0;
 int create_socket = -1;
 int new_socket = -1;
+struct stat st = {0};
 
 void *clientCommunication(void *data);
 void signalHandler(int sig);
+string mailDirectoryName;
 
 int main(int argc, char *argv[])
 {
 
     string port;
     int PORT;
-    string mailDirectoryName;
+
     if (optind < argc)
     {
         port = argv[optind++];
@@ -46,8 +57,11 @@ int main(int argc, char *argv[])
     else
     {
         cout << "Es wurden keine Parameter eingegeben\n";
-        // return -1;
+        return -1;
     }
+
+    cout << "CreateDirectory";
+    // int result = mkdir(mailDirectoryName.c_str(), 0700);
 
     socklen_t addrlen;
     struct sockaddr_in address, cliaddress;
@@ -152,7 +166,7 @@ int senderInputCounter = 0;
 struct
 {
     string sender;
-    string reciver;
+    string receiver;
     string subject;
     string message;
 
@@ -167,7 +181,7 @@ void Send(int &inputCounter, char buffer[BUF])
     }
     else if (inputCounter == 2)
     {
-        senderInputData.reciver = buffer;
+        senderInputData.receiver = buffer;
     }
     else if (inputCounter == 3)
     {
@@ -179,6 +193,50 @@ void Send(int &inputCounter, char buffer[BUF])
     }
 }
 
+void createReceiverDirectory(string &directoryName)
+{
+
+    string temp = mailDirectoryName + "/" + directoryName;
+
+    if (stat(temp.c_str(), &st) == -1)
+    {
+        int ok = mkdir(temp.c_str(), 0777);
+
+        if (!ok)
+        {
+            cout << "created\n";
+        }
+    }
+}
+
+mutex mtx;
+
+void saveMessage()
+{
+    FILE *fp;
+
+    createReceiverDirectory(senderInputData.receiver);
+
+    string temp = mailDirectoryName + "/" + senderInputData.receiver + "/" + senderInputData.subject;
+
+    cout << "in File Save";
+
+
+    mtx.lock();
+    fp = fopen(temp.c_str(), "w");
+
+    for (int i = 0; i < senderInputData.message.size(); i++)
+    {
+        /* write to file using fputc() function */
+        fputc(senderInputData.message[i], fp);
+    }
+
+    fclose(fp);
+    mtx.unlock();
+
+    // fclose(fp);
+}
+
 void handleCommands(char buffer[BUF], int current_socket)
 {
 
@@ -187,7 +245,11 @@ void handleCommands(char buffer[BUF], int current_socket)
         if (strcmp(buffer, ".") == 0)
         {
             senderInputs = false;
-            cout << senderInputData.message << "\n";
+            senderInputCounter = 0;
+            cout << senderInputData.message << " \n";
+
+            saveMessage();
+
             if (send(current_socket, "OK", 3, 0) == -1)
             {
                 perror("send answer failed");
@@ -207,6 +269,7 @@ void handleCommands(char buffer[BUF], int current_socket)
 
     if (strcmp(buffer, "SEND") == 0)
     {
+        senderInputData.message = "";
         senderInputs = true;
     }
     else if (strcmp(buffer, "LIST") == 0)
