@@ -118,7 +118,7 @@ int main(int argc, char **argv)
 
          printf("<< %s\n", receiveMessage(create_socket, buffer));
       } else if(strcmp(command, "LIST\n") == 0) {
-         
+         printf("<Username> ");
          // Read Username
          fgets(buffer, BUF, stdin);
          sendMessage(buffer, create_socket);
@@ -133,10 +133,12 @@ int main(int argc, char **argv)
             }
          }
       } else if(strcmp(command, "READ\n") == 0) {
+         printf("<Username> ");
          // Read Username
          fgets(buffer, BUF, stdin);
          sendMessage(buffer, create_socket);
 
+         printf("<Message-Number> ");
          // Read Message Number
          fgets(buffer, BUF, stdin);
          sendMessage(buffer, create_socket);
@@ -154,10 +156,12 @@ int main(int argc, char **argv)
             } while (true);
          }
       } else if(strcmp(command, "DEL\n") == 0) {
-                  // Read Username
+         printf("<Username> ");
+         // Read Username
          fgets(buffer, BUF, stdin);
          sendMessage(buffer, create_socket);
 
+         printf("<Message-Number> ");
          // Read Message Number
          fgets(buffer, BUF, stdin);
          sendMessage(buffer, create_socket);
