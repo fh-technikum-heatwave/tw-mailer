@@ -15,12 +15,38 @@
 
 using namespace std;
 
+
+// TODO: both functions require createSocket maybe put it in other scope so we dont have to pass it in all the time
+void sendMessage(char *message, int create_socket)
+{
+   if ((send(create_socket, message, strlen(message), 0)) == -1) 
+   {
+      perror("send error");
+   }
+}
+
+char* receiveMessage(int create_socket, char* buffer)
+{
+   int size = recv(create_socket, buffer, BUF - 1, 0);
+   if (size == -1)
+   {
+      perror("recv error");
+   }
+   else if (size == 0)
+   {
+      printf("Server closed remote socket\n"); // ignore error
+   }
+   
+   buffer[size] = '\0';
+   return buffer;
+}
+
+
 int main(int argc, char **argv)
 {
    int create_socket;
-   char buffer[BUF];
+   char buffer[BUF], command[BUF];
    struct sockaddr_in address;
-   int size;
    int isQuit;
 
    if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
@@ -56,80 +82,61 @@ int main(int argc, char **argv)
    printf("Connection with server (%s) established\n",
           inet_ntoa(address.sin_addr));
 
-   ////////////////////////////////////////////////////////////////////////////
-   // RECEIVE DATA
-   // https://man7.org/linux/man-pages/man2/recv.2.html
-   size = recv(create_socket, buffer, BUF - 1, 0);
-   if (size == -1)
-   {
-      perror("recv error");
-   }
-   else if (size == 0)
-   {
-      printf("Server closed remote socket\n"); // ignore error
-   }
-   else
-   {
-      buffer[size] = '\0';
-      printf("%s", buffer); // ignore error
-   }
+
+   printf("%s", receiveMessage(create_socket, buffer));
 
    do
    {
       printf(">> ");
-      if (fgets(buffer, BUF, stdin) != NULL)
-      {
-         int size = strlen(buffer);
-         // remove new-line signs from string at the end
-         if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
+      fgets(command, BUF, stdin);
+      sendMessage(command, create_socket);
+
+      if(strcmp(command, "SEND\n") == 0) {
+         const char* send_fields[3] = { "<SENDER> ", "<RECEIVER> ", "<SUBJECT> "}; 
+         const int send_fields_length = (sizeof(send_fields)/sizeof(*send_fields));
+         for (int i = 0; i < send_fields_length; i++)
          {
-            size -= 2;
-            buffer[size] = 0;
-         }
-         else if (buffer[size - 1] == '\n')
+            printf("%s", send_fields[i]);
+            fgets(buffer, BUF, stdin);
+            if(i == send_fields_length - 1 && strlen(buffer) > 80) {
+               printf("Subject can not be longer than 80 chars");
+               break;
+            } 
+            else 
+            {
+               sendMessage(buffer, create_socket);
+            }
+         }     
+
+         printf("<MESSAGE> ");
+         do
          {
-            --size;
-            buffer[size] = 0;
-         }
-         isQuit = strcmp(buffer, "quit") == 0;
+            fgets(buffer, BUF, stdin);
+            sendMessage(buffer, create_socket);
+         } while (strcmp(buffer, ".\n") != 0);
 
-         //////////////////////////////////////////////////////////////////////
-         // SEND DATA
-         // https://man7.org/linux/man-pages/man2/send.2.html
-         // send will fail if connection is closed, but does not set
-         // the error of send, but still the count of bytes sent
-         if ((send(create_socket, buffer, size, 0)) == -1) 
-         {
-
-
-            perror("send error");
-            break;
-         }
-
-
-
-         // size = recv(create_socket, buffer, BUF - 1, 0);
-         // if (size == -1)
-         // {
-         //    perror("recv error");
-         //    break;
-         // }
-         // else if (size == 0)
-         // {
-         //    printf("Server closed remote socket\n"); // ignore error
-         //    break;
-         // }
-         // else
-         // {
-         //    buffer[size] = '\0';
-         //    printf("<< %s\n", buffer); // ignore error
-         //    if (strcmp("OK", buffer) != 0)
-         //    {
-         //       fprintf(stderr, "<< Server error occured, abort\n");
-         //       break;
-         //    }
-         // }
+         printf("%s", receiveMessage(create_socket, buffer));
       }
+
+
+      
+      isQuit = strcmp(command, "QUIT\n") == 0;
+      // if (fgets(buffer, BUF, stdin) != NULL)
+      // {
+      //    int size = strlen(buffer);
+      //    // remove new-line signs from string at the end
+      //    if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
+      //    {
+      //       size -= 2;
+      //       buffer[size] = 0;
+      //    }
+      //    else if (buffer[size - 1] == '\n')
+      //    {
+      //       --size;
+      //       buffer[size] = 0;
+      //    }
+      //    isQuit = strcmp(buffer, "quit") == 0;
+      // }
    } while (!isQuit);
 
    ////////////////////////////////////////////////////////////////////////////

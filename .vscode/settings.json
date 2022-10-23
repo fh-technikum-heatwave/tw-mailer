@@ -1,3 +1,7 @@
 {
-    "liveshare.connectionMode": "auto"
+    "liveshare.connectionMode": "auto",
+    "files.associations": {
+        "random": "cpp",
+        "iostream": "cpp"
+    }
 }
