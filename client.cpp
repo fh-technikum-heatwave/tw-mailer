@@ -83,7 +83,7 @@ int main(int argc, char **argv)
           inet_ntoa(address.sin_addr));
 
 
-   printf("%s", receiveMessage(create_socket, buffer));
+   printf("<< %s", receiveMessage(create_socket, buffer));
 
    do
    {
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
             sendMessage(buffer, create_socket);
          } while (strcmp(buffer, ".\n") != 0);
 
-         printf("%s", receiveMessage(create_socket, buffer));
+         printf("<< %s", receiveMessage(create_socket, buffer));
       }
 
 
