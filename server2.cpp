@@ -13,7 +13,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <vector>
-#include <fstream>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -25,11 +24,6 @@
 #include <mutex>
 #include <string.h>
 
-#include <string>
-#include <iostream>
-#include <filesystem>
-namespace fs = std::filesystem;
-
 using namespace std;
 
 #define BUF 1024
@@ -39,9 +33,8 @@ int create_socket = -1;
 int new_socket = -1;
 struct stat st = {0};
 
-void clientCommunication(int &data);
+void clientCommunication(int data);
 void signalHandler(int sig);
-void sendMessage(char *message, int socket);
 string mailDirectoryName;
 
 char *receiveMessage(char *buffer, int current_socket);
@@ -190,7 +183,7 @@ void createReceiverDirectory(string &directoryName)
 
     if (stat(temp.c_str(), &st) == -1)
     {
-        int ok = mkdir(temp.c_str(), 0700);
+        int ok = mkdir(temp.c_str(), 0777);
 
         if (!ok)
         {
@@ -226,149 +219,53 @@ void saveMessage()
     // fclose(fp);
 }
 
+void listMessagesOfUser(string &username)
+{
+    DIR *dirp = opendir("");
+}
+
 void receiveMailData(char *buffer, int current_socket)
 {
-    senderInputData.sender = receiveMessage(buffer, current_socket);
-    senderInputData.receiver = receiveMessage(buffer, current_socket);
-    senderInputData.subject = receiveMessage(buffer, current_socket);
-    while (true)
-    {
-        char *message = receiveMessage(buffer, current_socket);
+    // senderInputData.sender = receiveMessage(buffer, current_socket);
+    // senderInputData.receiver = receiveMessage(buffer, current_socket);
+    // senderInputData.subject = receiveMessage(buffer, current_socket);
+    // // // // while (true)
+    // // {
+    // //     char *message = receiveMessage(buffer, current_socket);
 
-        if (strcmp(message, ".") == 0)
-        {
-            break;
-        }
+    // //     if (strcmp(message, ".") == 0)
+    // //     {
+    // //         break;
+    // //         ;
+    // //     }
 
-        senderInputData.message += message;
-        senderInputData.message += "\n";
-    }
-
-    saveMessage();
-    sendMessage("OK", current_socket);
+    // //     senderInputData.message += message;
+    // //     senderInputData.message += "\n";
+    // // }
 }
 
-auto read_file(std::string_view path) -> std::string
+void handleCommands(char buffer[BUF], int current_socket)
 {
-    constexpr auto read_size = std::size_t(4096);
-    auto stream = std::ifstream(path.data());
-    stream.exceptions(std::ios_base::badbit);
 
-    auto out = std::string();
-    auto buf = std::string(read_size, '\0');
-    while (stream.read(&buf[0], read_size))
-    {
-        out.append(buf, 0, stream.gcount());
-    }
-    out.append(buf, 0, stream.gcount());
-    return out;
-}
+    // cout << buffer;
 
-vector<string> getUserMessages(string username, int socket)
-{
-    string tempPath = mailDirectoryName + "/" + username + "/";
-    vector<string> filenames;
-
-    int foundPath = stat(tempPath.c_str(), &st);
-
-    if (foundPath == -1)
-    {
-        sendMessage("0", socket);
-    }
-    else if (foundPath == 0)
-    {
-        for (const auto &entry : fs::directory_iterator(tempPath))
-            filenames.push_back(entry.path().stem());
-    }
-
-    return filenames;
-}
-
-void handleCommands(char *buffer, int current_socket)
-{
     if (strcmp(buffer, "SEND") == 0)
     {
         receiveMailData(buffer, current_socket);
     }
     else if (strcmp(buffer, "LIST") == 0)
     {
-        char *username = receiveMessage(buffer, current_socket);
-        vector<string> filenames = getUserMessages(username, current_socket);
-
-        char *count = (char *)to_string(filenames.size()).c_str();
-
-        sendMessage(count, current_socket);
-        for (size_t i = 0; i < filenames.size(); i++)
-        {
-            char *response = receiveMessage(buffer, current_socket);
-
-            if (strcmp(response, "OK") == 0)
-            {
-                sendMessage((char *)filenames[i].c_str(), current_socket);
-            }
-        }
     }
     else if (strcmp(buffer, "READ") == 0)
     {
-        char *username = receiveMessage(buffer, current_socket);
-        string tempPath = mailDirectoryName + "/" + username + "/";
-
-        // TODO: Change to mail number
-        char *mail_subject = receiveMessage(buffer, current_socket);
-
-        int foundPath = stat(tempPath.c_str(), &st);
-        cout << tempPath << endl;
-        if (foundPath == -1)
-        {
-            cout << "ISNDIE" << endl;
-            sendMessage("ERR", current_socket);
-        }
-        else if (foundPath == 0)
-        {
-            tempPath += mail_subject;
-
-            string output = read_file(tempPath.c_str());
-
-            if(output.length() == 0) {
-                sendMessage("ERR", current_socket);
-                return;
-            }
-
-            sendMessage((char*)"OK", current_socket);
-            char* ok = receiveMessage(buffer, current_socket);
-            if(strcmp(ok, "OK") == 0) {
-                sendMessage((char *)output.c_str(), current_socket);
-            } else { sendMessage("ERR", current_socket); } 
-        }
     }
     else if (strcmp(buffer, "DEL") == 0)
     {
-        char *username = receiveMessage(buffer, current_socket);
-        string tempPath = mailDirectoryName + "/" + username + "/";
+        // char *username = receiveMessage(buffer, current_socket);
+        // // TODO: Change to mail number
+        // char *mail_subject = receiveMessage(buffer, current_socket);
 
-        // TODO: Change to mail number
-        char *mail_subject = receiveMessage(buffer, current_socket);
-
-        vector<string> filenames;
-
-        int foundPath = stat(tempPath.c_str(), &st);
-
-        if (foundPath == -1)
-        {
-            sendMessage("ERR", current_socket);
-        }
-        else if (foundPath == 0)
-        {
-            for (const auto &entry : fs::directory_iterator(tempPath))
-            {
-                if (strcmp(mail_subject, entry.path().stem().c_str()) == 0)
-                {
-                    remove(entry.path());
-                    sendMessage("OK", current_socket);
-                    break;
-                }
-            }
-        }
+        // printf("Usename: %s  Subject: %s", username, mail_subject);
     }
     else
     {
@@ -376,7 +273,7 @@ void handleCommands(char *buffer, int current_socket)
     }
 }
 
-char *receiveMessage(char *buffer, int current_socket)
+char* receiveMessage(char buffer[BUF], int current_socket)
 {
 
     int size;
@@ -393,7 +290,6 @@ char *receiveMessage(char *buffer, int current_socket)
         }
         else
         {
-            cout << " Line 293 \n";
             perror("recv error");
         }
 
@@ -404,7 +300,6 @@ char *receiveMessage(char *buffer, int current_socket)
     {
         printf("Client closed remote socket\n"); // ignore error
         // return;
-        return NULL;
     }
 
     // remove ugly debug message, because of the sent newline of client
@@ -422,17 +317,7 @@ char *receiveMessage(char *buffer, int current_socket)
     return buffer;
 }
 
-void sendMessage(char *buffer, int socket)
-{
-
-    if (send(socket, buffer, strlen(buffer), 0) == -1)
-    {
-        perror("send answer failed");
-        // return NULL;
-    }
-}
-
-void clientCommunication(int &data)
+void clientCommunication(int data)
 {
     char buffer[BUF];
     int current_socket = data;
@@ -440,6 +325,7 @@ void clientCommunication(int &data)
     strcpy(buffer, "Welcome to myserver!\r\nPlease enter your commands...\r\n");
     if (send(current_socket, buffer, strlen(buffer), 0) == -1)
     {
+
         perror("send failed");
         // return NULL;
     }
@@ -448,15 +334,20 @@ void clientCommunication(int &data)
     do
     {
 
-        char *command = receiveMessage(buffer, current_socket);
+      
 
+        char *buffer = receiveMessage(buffer, current_socket);
         printf("Message received: %s\n", buffer);
 
-        cout << command;
-
-        handleCommands(command, current_socket);
+        handleCommands(buffer, current_socket);
 
         // cout<<"Buffer " << buffer << "\n";
+
+        // if (send(*current_socket, "OK", 3, 0) == -1)
+        // {
+        //     perror("send answer failed");
+        //     return NULL;
+        // }
 
     } while (strcmp(buffer, "quit") != 0 && !abortRequested);
 

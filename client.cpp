@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <iostream>   
-#include <string> 
+#include <iostream>
+#include <string>
 
 #define BUF 1024
 #define PORT 6543
@@ -20,13 +20,13 @@ using namespace std;
 // TODO: both functions require createSocket maybe put it in other scope so we dont have to pass it in all the time
 void sendMessage(char *message, int create_socket)
 {
-   if ((send(create_socket, message, strlen(message), 0)) == -1) 
+   if ((send(create_socket, message, strlen(message), 0)) == -1)
    {
       perror("send error");
    }
 }
 
-char* receiveMessage(int create_socket, char* buffer)
+char *receiveMessage(int create_socket, char *buffer)
 {
    int size = recv(create_socket, buffer, BUF - 1, 0);
    if (size == -1)
@@ -37,11 +37,10 @@ char* receiveMessage(int create_socket, char* buffer)
    {
       printf("Server closed remote socket\n"); // ignore error
    }
-   
+
    buffer[size] = '\0';
    return buffer;
 }
-
 
 int main(int argc, char **argv)
 {
@@ -83,7 +82,6 @@ int main(int argc, char **argv)
    printf("Connection with server (%s) established\n",
           inet_ntoa(address.sin_addr));
 
-
    printf("<< %s", receiveMessage(create_socket, buffer));
 
    do
@@ -92,22 +90,24 @@ int main(int argc, char **argv)
       fgets(command, BUF, stdin);
       sendMessage(command, create_socket);
 
-      if(strcmp(command, "SEND\n") == 0) {
-         const char* send_fields[3] = { "<SENDER> ", "<RECEIVER> ", "<SUBJECT> "}; 
-         const int send_fields_length = (sizeof(send_fields)/sizeof(*send_fields));
+      if (strcmp(command, "SEND\n") == 0)
+      {
+         const char *send_fields[3] = {"<SENDER> ", "<RECEIVER> ", "<SUBJECT> "};
+         const int send_fields_length = (sizeof(send_fields) / sizeof(*send_fields));
          for (int i = 0; i < send_fields_length; i++)
          {
             printf("%s", send_fields[i]);
             fgets(buffer, BUF, stdin);
-            if(i == send_fields_length - 1 && strlen(buffer) > 80) {
+            if (i == send_fields_length - 1 && strlen(buffer) > 80)
+            {
                printf("Subject can not be longer than 80 chars");
                break;
-            } 
-            else 
+            }
+            else
             {
                sendMessage(buffer, create_socket);
             }
-         }     
+         }
 
          printf("<MESSAGE> ");
          do
@@ -123,13 +123,15 @@ int main(int argc, char **argv)
          fgets(buffer, BUF, stdin);
          sendMessage(buffer, create_socket);
 
-         int mail_count = stoi(receiveMessage(create_socket, buffer));
-         if(mail_count > 0) {
+         char* mcs = receiveMessage(create_socket, buffer);
+         int mail_count = stoi(mcs);
+         printf("<< %d\n", mail_count);
+         if (mail_count > 0)
+         {
             for (int i = 0; i < mail_count; i++)
             {
                sendMessage((char*)"OK", create_socket);
                printf("<< %s\n", receiveMessage(create_socket, buffer));
-
             }
          }
       } else if(strcmp(command, "READ\n") == 0) {
@@ -143,17 +145,13 @@ int main(int argc, char **argv)
          fgets(buffer, BUF, stdin);
          sendMessage(buffer, create_socket);
 
-         char* ok = receiveMessage(create_socket, buffer);
-         printf("<< %s\n", receiveMessage(create_socket, buffer));
-
-         if(strcmp(ok, "OK") == 0) {
-            do
-            {
-               sendMessage((char*)"OK", create_socket);
-               char* mailLine = receiveMessage(create_socket, buffer);
-               if(strcmp(mailLine, ".\n") == 0) break;
-               printf("<< %s\n", mailLine);
-            } while (true);
+         char *ok = receiveMessage(create_socket, buffer);
+         printf("<< %s\n", ok);
+         if (strcmp(ok, "OK") == 0)
+         {
+            sendMessage("OK", create_socket);
+            char *mailLine = receiveMessage(create_socket, buffer);
+            printf("<< %s\n", mailLine);
          }
       } else if(strcmp(command, "DEL\n") == 0) {
          printf("<Username> ");
@@ -170,9 +168,9 @@ int main(int argc, char **argv)
       }
 
       // TODO: HANDLE UNWANTED INPUT
-      
+
       isQuit = strcmp(command, "QUIT\n") == 0;
-   
+
    } while (!isQuit);
 
    // CLOSES THE DESCRIPTOR
@@ -181,7 +179,7 @@ int main(int argc, char **argv)
       if (shutdown(create_socket, SHUT_RDWR) == -1)
       {
          // invalid in case the server is gone already
-         perror("shutdown create_socket"); 
+         perror("shutdown create_socket");
       }
       if (close(create_socket) == -1)
       {
