@@ -148,18 +148,12 @@ int main(int argc, char **argv)
          sendMessage(buffer, create_socket);
 
          char *ok = receiveMessage(create_socket, buffer);
-         printf("<< %s\n", receiveMessage(create_socket, buffer));
-
+         printf("<< %s\n", ok);
          if (strcmp(ok, "OK") == 0)
          {
-            do
-            {
-               sendMessage((char *)"OK", create_socket);
-               char *mailLine = receiveMessage(create_socket, buffer);
-               if (strcmp(mailLine, ".\n") == 0)
-                  break;
-               printf("<< %s\n", mailLine);
-            } while (true);
+            sendMessage("OK", create_socket);
+            char *mailLine = receiveMessage(create_socket, buffer);
+            printf("<< %s\n", mailLine);
          }
       }
       else if (strcmp(command, "DEL\n") == 0)

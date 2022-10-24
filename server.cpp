@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <vector>
+#include <fstream>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -247,33 +248,43 @@ void receiveMailData(char *buffer, int current_socket)
     sendMessage("OK", current_socket);
 }
 
+auto read_file(std::string_view path) -> std::string
+{
+    constexpr auto read_size = std::size_t(4096);
+    auto stream = std::ifstream(path.data());
+    stream.exceptions(std::ios_base::badbit);
+
+    auto out = std::string();
+    auto buf = std::string(read_size, '\0');
+    while (stream.read(&buf[0], read_size))
+    {
+        out.append(buf, 0, stream.gcount());
+    }
+    out.append(buf, 0, stream.gcount());
+    return out;
+}
+
 vector<string> getUserMessages(string username, int socket)
 {
     string tempPath = mailDirectoryName + "/" + username + "/";
-    cout << tempPath;
     vector<string> filenames;
 
     int foundPath = stat(tempPath.c_str(), &st);
 
-    // cout << foundPath << "\n";
     if (foundPath == -1)
     {
-        cout << " Line 260" << endl;
         sendMessage("0", socket);
     }
     else if (foundPath == 0)
     {
-        cout << tempPath + "\n";
-
         for (const auto &entry : fs::directory_iterator(tempPath))
             filenames.push_back(entry.path().stem());
-            //cout << entry.path().stem() << endl;
     }
 
     return filenames;
 }
 
-void handleCommands(char buffer[BUF], int current_socket)
+void handleCommands(char *buffer, int current_socket)
 {
     if (strcmp(buffer, "SEND") == 0)
     {
@@ -283,33 +294,61 @@ void handleCommands(char buffer[BUF], int current_socket)
     {
         char *username = receiveMessage(buffer, current_socket);
         vector<string> filenames = getUserMessages(username, current_socket);
-       
-        char* count = (char*)to_string(filenames.size()).c_str();
+
+        char *count = (char *)to_string(filenames.size()).c_str();
 
         sendMessage(count, current_socket);
         for (size_t i = 0; i < filenames.size(); i++)
         {
-            char* response = receiveMessage(buffer, current_socket);
-            if(strcmp(response, "OK") == 0) {
+            char *response = receiveMessage(buffer, current_socket);
+
+            if (strcmp(response, "OK") == 0)
+            {
                 sendMessage((char *)filenames[i].c_str(), current_socket);
             }
         }
     }
     else if (strcmp(buffer, "READ") == 0)
     {
+        char *username = receiveMessage(buffer, current_socket);
+        string tempPath = mailDirectoryName + "/" + username + "/";
+
+        // TODO: Change to mail number
+        char *mail_subject = receiveMessage(buffer, current_socket);
+
+        int foundPath = stat(tempPath.c_str(), &st);
+        cout << tempPath << endl;
+        if (foundPath == -1)
+        {
+            cout << "ISNDIE" << endl;
+            sendMessage("ERR", current_socket);
+        }
+        else if (foundPath == 0)
+        {
+            tempPath += mail_subject;
+
+            string output = read_file(tempPath.c_str());
+
+            if(output.length() == 0) {
+                sendMessage("ERR", current_socket);
+                return;
+            }
+
+            sendMessage((char*)"OK", current_socket);
+            char* ok = receiveMessage(buffer, current_socket);
+            if(strcmp(ok, "OK") == 0) {
+                sendMessage((char *)output.c_str(), current_socket);
+            } else { sendMessage("ERR", current_socket); } 
+        }
     }
     else if (strcmp(buffer, "DEL") == 0)
     {
-        const char* username = receiveMessage(buffer, current_socket);
-        cout << username << " <-- NAME\n" << endl; 
-        // TODO: Change to mail number
-        const char* mail_subject = receiveMessage(buffer, current_socket);
-
-        printf("\nUsename: %s  Subject: %s\n", username, mail_subject);
-        cout << username << " <-- NAME2\n" << endl; 
-
+        char *username = receiveMessage(buffer, current_socket);
         string tempPath = mailDirectoryName + "/" + username + "/";
-        cout << tempPath + "\n";
+
+        // TODO: Change to mail number
+        char *mail_subject = receiveMessage(buffer, current_socket);
+
         vector<string> filenames;
 
         int foundPath = stat(tempPath.c_str(), &st);
@@ -320,14 +359,14 @@ void handleCommands(char buffer[BUF], int current_socket)
         }
         else if (foundPath == 0)
         {
-            for (const auto &entry : fs::directory_iterator(tempPath)) {
+            for (const auto &entry : fs::directory_iterator(tempPath))
+            {
                 if (strcmp(mail_subject, entry.path().stem().c_str()) == 0)
                 {
-                    delete(&entry);
+                    remove(entry.path());
                     sendMessage("OK", current_socket);
                     break;
                 }
-                
             }
         }
     }
@@ -365,6 +404,7 @@ char *receiveMessage(char *buffer, int current_socket)
     {
         printf("Client closed remote socket\n"); // ignore error
         // return;
+        return NULL;
     }
 
     // remove ugly debug message, because of the sent newline of client
@@ -384,7 +424,6 @@ char *receiveMessage(char *buffer, int current_socket)
 
 void sendMessage(char *buffer, int socket)
 {
-    cout << "Line 388" << endl;
 
     if (send(socket, buffer, strlen(buffer), 0) == -1)
     {
