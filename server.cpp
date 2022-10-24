@@ -266,7 +266,8 @@ vector<string> getUserMessages(string username, int socket)
         cout << tempPath + "\n";
 
         for (const auto &entry : fs::directory_iterator(tempPath))
-            cout << entry.path() << endl;
+            filenames.push_back(entry.path().stem());
+            //cout << entry.path().stem() << endl;
     }
 
     return filenames;
@@ -274,28 +275,24 @@ vector<string> getUserMessages(string username, int socket)
 
 void handleCommands(char buffer[BUF], int current_socket)
 {
-    cout << " in handle commands \n";
-
-    cout << buffer;
-
     if (strcmp(buffer, "SEND") == 0)
     {
         receiveMailData(buffer, current_socket);
     }
     else if (strcmp(buffer, "LIST") == 0)
     {
-        cout << "Inside List \n";
         char *username = receiveMessage(buffer, current_socket);
-        cout << " username \n";
         vector<string> filenames = getUserMessages(username, current_socket);
-        printf("AFTER FILENAMES");
-        string temp = filenames.size() + "";
-        sendMessage((char *)temp.c_str(), current_socket);
+       
+        char* count = (char*)to_string(filenames.size()).c_str();
+
+        sendMessage(count, current_socket);
         for (size_t i = 0; i < filenames.size(); i++)
         {
-            // char* response = receiveMessage(buffer, current_socket);
-            // if(strcmp(response, "OK") == 0) {}
-            sendMessage((char *)filenames[i].c_str(), current_socket);
+            char* response = receiveMessage(buffer, current_socket);
+            if(strcmp(response, "OK") == 0) {
+                sendMessage((char *)filenames[i].c_str(), current_socket);
+            }
         }
     }
     else if (strcmp(buffer, "READ") == 0)
@@ -303,11 +300,36 @@ void handleCommands(char buffer[BUF], int current_socket)
     }
     else if (strcmp(buffer, "DEL") == 0)
     {
-        char *username = receiveMessage(buffer, current_socket);
+        const char* username = receiveMessage(buffer, current_socket);
+        cout << username << " <-- NAME\n" << endl; 
         // TODO: Change to mail number
-        char *mail_subject = receiveMessage(buffer, current_socket);
+        const char* mail_subject = receiveMessage(buffer, current_socket);
 
-        printf("Usename: %s  Subject: %s", username, mail_subject);
+        printf("\nUsename: %s  Subject: %s\n", username, mail_subject);
+        cout << username << " <-- NAME2\n" << endl; 
+
+        string tempPath = mailDirectoryName + "/" + username + "/";
+        cout << tempPath + "\n";
+        vector<string> filenames;
+
+        int foundPath = stat(tempPath.c_str(), &st);
+
+        if (foundPath == -1)
+        {
+            sendMessage("ERR", current_socket);
+        }
+        else if (foundPath == 0)
+        {
+            for (const auto &entry : fs::directory_iterator(tempPath)) {
+                if (strcmp(mail_subject, entry.path().stem().c_str()) == 0)
+                {
+                    delete(&entry);
+                    sendMessage("OK", current_socket);
+                    break;
+                }
+                
+            }
+        }
     }
     else
     {
