@@ -1,10 +1,16 @@
-all: server client
+CC = g++
+CFLAGS = -Wall -g
 
-server:server.cpp
-	g++ -std=c++17 -Wall -g -o server server.cpp
+all: main client
 
-client:client.cpp
-	g++ -Wall -g -o client client.cpp
+client: client.cpp
+	$(CC) $(CFLAGS) -o client client.cpp
+
+main:Main.cpp Server.cpp
+	$(CC) $(CFLAGS) -o main main.cpp Server.cpp
+
+Server: Server.hpp
+	$(CC) $(CFLAGS) -c Server.cpp
 
 clean:
-	rm -f client server	
+	rm -f main
