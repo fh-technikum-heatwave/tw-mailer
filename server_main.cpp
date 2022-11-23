@@ -1,5 +1,10 @@
 #include "Server.hpp"
 #include <unistd.h>
+#include <filesystem>
+#include <iostream>
+#include <fstream>
+#include <cstdlib>
+namespace fs = std::filesystem;
 
 int main(int argc, char *argv[])
 {
@@ -25,8 +30,12 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    fs::path directoryName {mailDirectoryName};
+
+    fs::create_directory(directoryName);
 
     Server server(stoi(port), mailDirectoryName);
+
     server.run();
 
     return 0;

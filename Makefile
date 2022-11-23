@@ -1,16 +1,19 @@
 CC = g++
 CFLAGS = -Wall -g
 
-all: main client
+all: server_main client_main
 
-client: client.cpp
-	$(CC) $(CFLAGS) -o client client.cpp
+client_main:client_main.cpp Client.cpp
+	$(CC) -std=c++17 $(CFLAGS) -o client_main client_main.cpp Client.cpp
 
-main:Main.cpp Server.cpp
-	$(CC) $(CFLAGS) -o main main.cpp Server.cpp
+Client: Client.hpp
+	$(CC) -std=c++17 $(CFLAGS) -c Client.cpp	
+
+server_main:server_main.cpp Server.cpp
+	$(CC) -std=c++17 $(CFLAGS) -o server_main server_main.cpp Server.cpp
 
 Server: Server.hpp
-	$(CC) $(CFLAGS) -c Server.cpp
+	$(CC) -std=c++17 $(CFLAGS) -c Server.cpp
 
 clean:
-	rm -f main
+	rm -f server_main client_main
