@@ -83,37 +83,92 @@ void Server::handleCommands(char *buffer)
 {
 
     string command = buffer;
+    if (authenticated == false)
+    {
+        if (command == "LOGIN")
+        {
+            sendMessage("OK");
+            login(buffer);
+        }
+        else
+        {
+            sendMessage("401"); // unauthorized User
+        }
+
+        return;
+    }
+
     if (command == "SEND")
     {
+        sendMessage("OK");
         receiveMail(buffer);
+
         return;
     }
 
     if (command == "LIST")
     {
+        sendMessage("OK");
         allMails(buffer);
         return;
     }
 
     if (command == "READ")
     {
+        sendMessage("OK");
         readMail(buffer);
         return;
     }
 
     if (command == "DEL")
     {
+        sendMessage("OK");
         deleteMail(buffer);
         return;
     }
 
     cout << "ungültiger Befehl\n";
+    sendMessage("invalid Command");
+}
+
+void Server::login(char *buffer)
+{
+
+    if (loginAttempts == 0)
+    {
+
+        return;
+    }
+    receivemessage(buffer);
+    string user = buffer;
+
+    receivemessage(buffer);
+    string password = buffer;
+
+    bool isAuth = ldapAuth(user, password);
+
+    if (!isAuth)
+    {
+        loginAttempts--;
+        sendMessage("ERR");
+    }
+    else
+    {
+        loginAttempts = 3;
+        authenticated = true;
+        username = user;
+        sendMessage("OK");
+    }
+}
+
+bool Server::isBlackListed()
+{
+    string ipAdress = inet_ntoa(cliaddress.sin_addr);
 }
 
 void Server::deleteMail(char *buffer)
 {
-    receivemessage(buffer);
-    string username = buffer;
+
     string tempPath = mailDirectoryName + "/" + username + "/";
 
     // TODO: Change to mail number
@@ -144,10 +199,8 @@ void Server::deleteMail(char *buffer)
 
 void Server::allMails(char *buffer)
 {
-    receivemessage(buffer);
-    string username = buffer;
 
-    vector<string> filenames = getUserMessages(username);
+    vector<string> filenames = getUserMessages();
     char *count = (char *)to_string(filenames.size()).c_str();
     sendMessage(count);
 
@@ -167,8 +220,6 @@ void Server::allMails(char *buffer)
 
 void Server::readMail(char *buffer)
 {
-    receivemessage(buffer);
-    string username = buffer;
     string tempPath = mailDirectoryName + "/" + username + "/";
 
     // TODO: Change to mail number
@@ -211,8 +262,6 @@ void Server::readMail(char *buffer)
 
 void Server::receiveMail(char *buffer)
 {
-    receivemessage(buffer);
-    string sender = buffer;
 
     receivemessage(buffer);
     string receiver = buffer;
@@ -221,6 +270,9 @@ void Server::receiveMail(char *buffer)
     string subject = buffer;
 
     string message = "";
+
+    message = "Nachricht von: " + username + "\n";
+    message += "SUBJECT: " + subject + "\n";
 
     while (true)
     {
@@ -236,7 +288,7 @@ void Server::receiveMail(char *buffer)
         message += "\n";
     }
 
-    saveMessage(sender, receiver, subject, message);
+    saveMessage(receiver, subject, message);
     sendMessage("OK");
 }
 
@@ -313,13 +365,14 @@ void Server::handShake()
     }
 }
 
-void Server::saveMessage(string &sender, string &receiver, string &subject, string &message)
+void Server::saveMessage(string &receiver, string &subject, string &message)
 {
     FILE *fp;
     mutex mtx;
 
     createReceiverDirectory(receiver);
 
+    std::time_t result = std::time(nullptr);
     string temp = mailDirectoryName + "/" + receiver + "/" + subject;
 
     cout << "in File Save";
@@ -395,7 +448,7 @@ void Server::createSocket()
     }
 }
 
-vector<string> Server::getUserMessages(string &username)
+vector<string> Server::getUserMessages()
 {
     string tempPath = mailDirectoryName + "/" + username + "/";
     vector<string> filenames;
@@ -413,6 +466,69 @@ vector<string> Server::getUserMessages(string &username)
     }
 
     return filenames;
+}
+
+bool Server::ldapAuth(string username, string password)
+{
+    LDAP *ld;
+    char *dn;
+    int version, rc;
+
+    string tempRoot = "uid=" + username + ",ou=People,dc=technikum-wien,dc=at";
+    const char *root_dn = tempRoot.c_str();
+
+    string HOSTNAME = "ldap://ldap.technikum-wien.at:389";
+    int ldapPort = 389;
+
+    BerValue *servercredp;
+    BerValue cred;
+
+    cred.bv_val = (char *)password.c_str();
+    cred.bv_len = strlen(password.c_str());
+
+    version = LDAP_VERSION3;
+
+    printf("Connecting %s in port %d...\n\n", HOSTNAME.c_str(), ldapPort);
+
+    rc = ldap_initialize(&ld, HOSTNAME.c_str());
+
+    if ((rc = ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version)) != LDAP_SUCCESS)
+    {
+        printf("ldap_set_option(PROTOCOL_VERSION): %s", ldap_err2string(rc));
+        fflush(stdout);
+        ldap_unbind_ext_s(ld, NULL, NULL);
+        exit(EXIT_FAILURE);
+    }
+
+    // if ((rc = ldap_start_tls_s(ld,NULL,NULL)) != LDAP_SUCCESS)
+    // {
+    //     printf("ldap_start_tls_s(): %s", ldap_err2string(rc));
+    //     fflush(stdout);
+    //     ldap_unbind_ext_s(ld, NULL, NULL);
+    //     return false;
+    // }
+
+    if (rc != LDAP_SUCCESS)
+    {
+        printf("Error !");
+    }
+
+    rc = ldap_sasl_bind_s(ld, root_dn, LDAP_SASL_SIMPLE, &cred, NULL, NULL, &servercredp);
+
+    if (rc != LDAP_SUCCESS)
+    {
+
+        fprintf(stderr, "Error: %s\n", ldap_err2string(rc));
+        ldap_unbind_ext(ld, NULL, NULL);
+        return false;
+    }
+    else
+    {
+        printf("bind successful\n");
+        return true;
+    }
+
+    ldap_unbind_ext(ld, NULL, NULL);
 }
 
 auto Server::read_file(std::string_view path) -> std::string

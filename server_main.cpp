@@ -4,6 +4,10 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#include <stdio.h>
+#include <ldap.h>
+#include <ldap_cdefs.h>
+
 namespace fs = std::filesystem;
 
 int main(int argc, char *argv[])
@@ -30,7 +34,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    fs::path directoryName {mailDirectoryName};
+    fs::path directoryName{mailDirectoryName};
 
     fs::create_directory(directoryName);
 

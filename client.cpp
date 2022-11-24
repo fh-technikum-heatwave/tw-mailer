@@ -35,7 +35,6 @@ void Client::run()
     receiveMessage(buffer);
     printf(buffer);
 
-
     commandHandle();
 
     if (create_socket != -1)
@@ -61,7 +60,21 @@ void Client::commandHandle()
     {
         printf(">> ");
         fgets(command, BUF, stdin);
+        isQuit = strcmp(command, "QUIT\n") == 0;
+        if (isQuit)
+        {
+            break;
+        }
         sendMessage(command);
+        // this receiveMessage is neccessary, it tells if the user is authenticated or not
+        receiveMessage(buffer);
+        string response = buffer;
+
+        if (response == "401")
+        {
+            cout << ">> You are not authenticated, please use Command: LOGIN\n";
+            continue;
+        }
 
         if (strcmp(command, "SEND\n") == 0)
         {
@@ -79,6 +92,10 @@ void Client::commandHandle()
         {
             deleteCommand();
         }
+        else if (strcmp(command, "LOGIN\n") == 0)
+        {
+            login();
+        }
 
         // TODO: HANDLE UNWANTED INPUT
 
@@ -89,11 +106,6 @@ void Client::commandHandle()
 
 void Client::deleteCommand()
 {
-    printf("<Username> ");
-    // Read Username
-    fgets(buffer, BUF, stdin);
-    sendMessage(buffer);
-
     printf("<Message-Number> ");
     // Read Message Number
     fgets(buffer, BUF, stdin);
@@ -103,13 +115,22 @@ void Client::deleteCommand()
     printf("<< %s\n", buffer);
 }
 
-void Client::listCommand()
+void Client::login()
 {
     printf("<Username> ");
-    // Read Username
     fgets(buffer, BUF, stdin);
     sendMessage(buffer);
+    printf("<Password> ");
+    fgets(buffer, BUF, stdin);
+    sendMessage(buffer);
+    receiveMessage(buffer);
+    string message = buffer;
 
+    printf("<< %s\n", buffer);
+}
+
+void Client::listCommand()
+{
     receiveMessage(buffer);
     char *mcs = buffer;
     int mail_count = stoi(mcs);
@@ -127,7 +148,7 @@ void Client::listCommand()
 
 void Client::sendCommand()
 {
-    const char *send_fields[3] = {"<SENDER> ", "<RECEIVER> ", "<SUBJECT> "};
+    const char *send_fields[2] = {"<RECEIVER> ", "<SUBJECT> "};
     const int send_fields_length = (sizeof(send_fields) / sizeof(*send_fields));
     for (int i = 0; i < send_fields_length; i++)
     {
@@ -157,10 +178,6 @@ void Client::sendCommand()
 
 void Client::readCommand()
 {
-    printf("<Username> ");
-    // Read Username
-    fgets(buffer, BUF, stdin);
-    sendMessage(buffer);
 
     printf("<Message-Number> ");
     // Read Message Number
@@ -169,13 +186,13 @@ void Client::readCommand()
 
     receiveMessage(buffer);
     string ok = buffer;
-    printf("<< %s\n", ok);
+    printf("<< %s\n", buffer);
     if (ok == "OK")
     {
         sendMessage("OK");
         receiveMessage(buffer);
-        string mailLine = buffer;
-        printf("<< %s\n", mailLine);
+
+        printf("<< %s\n", buffer);
     }
 }
 

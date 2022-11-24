@@ -27,6 +27,7 @@ private:
     int create_socket = -1;
     int client_socket = -1;
     int PORT;
+    int wrongCounter = 0;
     string ipAdress;
     struct sockaddr_in address;
     int isQuit;
@@ -40,5 +41,6 @@ private:
     void listCommand();
     void deleteCommand();
     void readCommand();
+    void login();
 };
 #endif
