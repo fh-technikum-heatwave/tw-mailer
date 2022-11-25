@@ -120,9 +120,8 @@ void Client::login()
     printf("<Username> ");
     fgets(buffer, BUF, stdin);
     sendMessage(buffer);
-    printf("<Password> ");
-    fgets(buffer, BUF, stdin);
-    sendMessage(buffer);
+    char *password = getpass("<Password> ");
+    sendMessage(password);
     receiveMessage(buffer);
     string message = buffer;
 
