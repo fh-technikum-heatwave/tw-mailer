@@ -15,7 +15,7 @@ void Server::run()
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
 
-    handShake(); // In dieser Methode finden das listen und binden statt
+    setupConnection(); // In dieser Methode finden das listen und binden statt
 
     while (1)
     {
@@ -87,12 +87,12 @@ void Server::handleCommands(char *buffer)
     {
         if (command == "LOGIN")
         {
-            sendMessage("OK");
+            sendMessage(OK_MESSAGE);
             login(buffer);
         }
         else
         {
-            sendMessage("401"); // unauthorized User
+            sendMessage("ERR"); // unauthorized User
         }
 
         return;
@@ -100,7 +100,7 @@ void Server::handleCommands(char *buffer)
 
     if (command == "SEND")
     {
-        sendMessage("OK");
+        sendMessage(OK_MESSAGE);
         receiveMail(buffer);
 
         return;
@@ -108,69 +108,153 @@ void Server::handleCommands(char *buffer)
 
     if (command == "LIST")
     {
-        sendMessage("OK");
+        sendMessage(OK_MESSAGE);
         allMails(buffer);
         return;
     }
 
     if (command == "READ")
     {
-        sendMessage("OK");
+        sendMessage(OK_MESSAGE);
         readMail(buffer);
         return;
     }
 
     if (command == "DEL")
     {
-        sendMessage("OK");
+        sendMessage(OK_MESSAGE);
         deleteMail(buffer);
         return;
     }
 
     cout << "ungültiger Befehl\n";
-    sendMessage("invalid Command");
+    sendMessage("ERR");
 }
 
 void Server::login(char *buffer)
 {
 
-    if (loginAttempts == 0)
-    {
-
-        return;
-    }
     receivemessage(buffer);
     string user = buffer;
 
     receivemessage(buffer);
     string password = buffer;
 
+    if (loginAttempts == 0)
+    {
+        cout << " in Login Attempts first if \n";
+        if (isBlackListed())
+        {
+            cout << " BlackList if \n";
+            sendMessage("ERR");
+            return;
+        }
+        else
+        {
+            loginAttempts = 3;
+        }
+    }
+
     bool isAuth = ldapAuth(user, password);
+    mutex mtx;
 
     if (!isAuth)
     {
         loginAttempts--;
         sendMessage("ERR");
+        if (loginAttempts == 0)
+        {
+            // Im File speichern
+            string ip = inet_ntoa(cliaddress.sin_addr);
+            string msg = ip + ";" + to_string(time(0) + 60);
+            writeToFile("./blacklist.txt", msg);
+        }
     }
     else
     {
         loginAttempts = 3;
         authenticated = true;
         username = user;
-        sendMessage("OK");
+        sendMessage(OK_MESSAGE);
     }
 }
 
 bool Server::isBlackListed()
 {
+    fflush(stdout);
     string ipAdress = inet_ntoa(cliaddress.sin_addr);
+    ifstream file;
+    file.open("./blacklist.txt");
+    if (!file.is_open())
+    {
+        cout << "not able to open file \n"
+             << endl;
+    }
+
+    string line;
+
+    mutex mtx;
+
+    mtx.lock();
+    bool found = false;
+    cout << "before while loop" << endl;
+
+    fflush(stdout);
+    while (getline(file, line))
+    {
+        cout << "in while loop \n"
+             << endl;
+        string blackListedIp = line.substr(0, line.find(";"));
+        if (ipAdress == blackListedIp)
+        {
+            cout << "in ipaddres == blacklistedip \n"
+                 << endl;
+
+            fflush(stdout);
+            cout << "line 211" + line << endl;
+            fflush(stdout);
+
+            if (line.find(";") != string::npos)
+            {
+                cout << "in if 215" << endl;
+                string temp = line.substr(line.find(";"));
+                cout << "temp " + temp << endl;
+                cout << "lIne " + line << endl;
+                fflush(stdout);
+                cout << "tempsubstring " + temp.substr(1) << endl;
+                cout << temp.substr(1) + " > " + to_string(time(0)) << endl;
+                fflush(stdout);
+                fflush(stdout);
+                found = stoi(temp.substr(1)) > time(0);
+                cout << found
+                     << endl;
+            }
+            else
+            {
+                cout << "in else \n"
+                     << endl;
+            }
+
+            break;
+        }
+    }
+    fflush(stdout);
+
+    cout << "after while loop" << endl;
+    file.close();
+    mtx.unlock();
+
+    cout << "LINE 213 " + found << endl;
+    fflush(stdout);
+    if (!found)
+        eraseFileLine("./blacklist.txt", line);
+
+    return found;
 }
 
 void Server::deleteMail(char *buffer)
 {
-
     string tempPath = mailDirectoryName + "/" + username + "/";
-
     // TODO: Change to mail number
     receivemessage(buffer);
     string mail_subject = buffer;
@@ -190,7 +274,7 @@ void Server::deleteMail(char *buffer)
             if (mail_subject == entry.path().stem().c_str())
             {
                 remove(entry.path());
-                sendMessage("OK");
+                sendMessage(OK_MESSAGE);
                 break;
             }
         }
@@ -211,7 +295,7 @@ void Server::allMails(char *buffer)
 
         cout << response;
 
-        if (response == "OK")
+        if (response == OK_MESSAGE)
         {
             sendMessage((char *)filenames[i].c_str());
         }
@@ -245,11 +329,11 @@ void Server::readMail(char *buffer)
             return;
         }
 
-        sendMessage((char *)"OK");
+        sendMessage((char *)OK_MESSAGE);
         receivemessage(buffer);
         string ok = buffer;
 
-        if (ok == "OK")
+        if (ok == OK_MESSAGE)
         {
             sendMessage((char *)output.c_str());
         }
@@ -289,7 +373,7 @@ void Server::receiveMail(char *buffer)
     }
 
     saveMessage(receiver, subject, message);
-    sendMessage("OK");
+    sendMessage(OK_MESSAGE);
 }
 
 void Server::receivemessage(char *buffer)
@@ -350,7 +434,7 @@ void Server::acceptConnection()
     }
 }
 
-void Server::handShake()
+void Server::setupConnection()
 {
     if (bind(create_socket, (struct sockaddr *)&address, sizeof(address)) == -1)
     {
@@ -367,27 +451,9 @@ void Server::handShake()
 
 void Server::saveMessage(string &receiver, string &subject, string &message)
 {
-    FILE *fp;
-    mutex mtx;
-
     createReceiverDirectory(receiver);
-
-    std::time_t result = std::time(nullptr);
     string temp = mailDirectoryName + "/" + receiver + "/" + subject;
-
-    cout << "in File Save";
-
-    mtx.lock();
-    fp = fopen(temp.c_str(), "w");
-
-    for (int i = 0; i < message.size(); i++)
-    {
-        /* write to file using fputc() function */
-        fputc(message[i], fp);
-    }
-
-    fclose(fp);
-    mtx.unlock();
+    writeToFile(temp.c_str(), message);
 }
 
 void Server::createReceiverDirectory(string &directoryName)
@@ -500,13 +566,16 @@ bool Server::ldapAuth(string username, string password)
         exit(EXIT_FAILURE);
     }
 
-    // if ((rc = ldap_start_tls_s(ld,NULL,NULL)) != LDAP_SUCCESS)
-    // {
-    //     printf("ldap_start_tls_s(): %s", ldap_err2string(rc));
-    //     fflush(stdout);
-    //     ldap_unbind_ext_s(ld, NULL, NULL);
-    //     return false;
-    // }
+    rc = ldap_start_tls_s(
+        ld,
+        NULL,
+        NULL);
+    if (rc != LDAP_SUCCESS)
+    {
+        fprintf(stderr, "ldap_start_tls_s(): %s\n", ldap_err2string(rc));
+        ldap_unbind_ext_s(ld, NULL, NULL);
+        return EXIT_FAILURE;
+    }
 
     if (rc != LDAP_SUCCESS)
     {
@@ -545,4 +614,49 @@ auto Server::read_file(std::string_view path) -> std::string
     }
     out.append(buf, 0, stream.gcount());
     return out;
+}
+
+void Server::writeToFile(string filename, string message)
+{
+    mutex mtx;
+    FILE *fp;
+    mtx.lock();
+    fp = fopen(filename.c_str(), "w");
+
+    for (int i = 0; i < message.size(); i++)
+    {
+        /* write to file using fputc() function */
+        fputc(message[i], fp);
+    }
+
+    fclose(fp);
+    mtx.unlock();
+}
+
+// Source: https://stackoverflow.com/questions/26576714/deleting-specific-line-from-file
+void Server::eraseFileLine(string path, string eraseLine)
+{
+    string line;
+    ifstream fin;
+
+    fin.open(path);
+    // contents of path must be copied to a temp file then
+    // renamed back to the path file
+    ofstream temp;
+    temp.open("temp.txt");
+
+    while (getline(fin, line))
+    {
+        // write all lines to temp other than the line marked for erasing
+        if (line != eraseLine)
+            temp << line << endl;
+    }
+
+    temp.close();
+    fin.close();
+
+    // required conversion for remove and rename functions
+    const char *p = path.c_str();
+    remove(p);
+    rename("temp.txt", p);
 }

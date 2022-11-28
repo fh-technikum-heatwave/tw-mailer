@@ -23,7 +23,6 @@
 #include <ldap.h>
 #include <ldap_cdefs.h>
 #include <ctime>
- 
 
 namespace fs = std::filesystem;
 using namespace std;
@@ -44,9 +43,10 @@ private:
     pid_t pid;
     bool authenticated = false;
     int loginAttempts = 3;
+    char *OK_MESSAGE = "OK";
 
     void createSocket();
-    void handShake();
+    void setupConnection();
     void acceptConnection();
     void clientCommunication();
     void receivemessage(char *buffer);
@@ -63,6 +63,9 @@ private:
     void login(char *buffer);
     bool ldapAuth(string user, const string password);
     bool isBlackListed();
+    string generate_ID();
+    void writeToFile(string filenmame, string message);
+    void eraseFileLine(string path, string line);
 
 public:
     Server(int port, string mailName);

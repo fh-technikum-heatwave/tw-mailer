@@ -70,7 +70,7 @@ void Client::commandHandle()
         receiveMessage(buffer);
         string response = buffer;
 
-        if (response == "401")
+        if (response == "ERR")
         {
             cout << ">> You are not authenticated, please use Command: LOGIN\n";
             continue;
