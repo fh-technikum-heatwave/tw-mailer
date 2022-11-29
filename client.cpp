@@ -131,6 +131,7 @@ void Client::login()
 void Client::listCommand()
 {
     receiveMessage(buffer);
+    cout << buffer << endl;
     char *mcs = buffer;
     int mail_count = stoi(mcs);
     printf("<< %d\n", mail_count);
@@ -142,6 +143,10 @@ void Client::listCommand()
             receiveMessage(buffer);
             printf("<< %s\n", buffer);
         }
+    }
+    else
+    {
+        receiveMessage(buffer);
     }
 }
 

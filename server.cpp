@@ -271,8 +271,7 @@ void Server::allMails(char *buffer)
 void Server::readMail(char *buffer)
 {
     string tempPath = mailDirectoryName + "/" + username + "/";
-
-    // TODO: Change to mail number
+    
     receivemessage(buffer);
     string mail_subject = buffer;
 
@@ -280,7 +279,6 @@ void Server::readMail(char *buffer)
     cout << tempPath << endl;
     if (foundPath == -1)
     {
-        cout << "ISNDIE" << endl;
         sendMessage(ERR_MESSAGE);
     }
     else if (foundPath == 0)
