@@ -72,7 +72,7 @@ void Client::commandHandle()
 
         if (response == "ERR")
         {
-            cout << ">> You are not authenticated, please use Command: LOGIN\n";
+            cout << ">>Error\n";
             continue;
         }
 

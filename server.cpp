@@ -12,7 +12,7 @@ void Server::run()
     memset(&address, 0, sizeof(address));
 
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_addr.s_addr = inet_addr("127.0.0.1");
     address.sin_port = htons(PORT);
 
     setupConnection(); // In dieser Methode finden das listen und binden statt
@@ -140,19 +140,17 @@ void Server::login(char *buffer)
     receivemessage(buffer);
     string password = buffer;
 
-    if (loginAttempts == 0)
+    cout << " in Login Attempts first if \n";
+    if (isBlackListed())
     {
-        cout << " in Login Attempts first if \n";
-        if (isBlackListed())
-        {
-            cout << " BlackList if \n";
-            sendMessage("ERR");
-            return;
-        }
-        else
-        {
-            loginAttempts = 3;
-        }
+        cout << " BlackList if \n";
+        sendMessage("ERR");
+        return;
+    }
+    else if (loginAttempts == 0)
+    {
+
+        loginAttempts = 3;
     }
 
     bool isAuth = ldapAuth(user, password);
