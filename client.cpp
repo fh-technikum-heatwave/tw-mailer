@@ -33,7 +33,7 @@ void Client::run()
            inet_ntoa(address.sin_addr));
 
     receiveMessage(buffer);
-    printf(buffer);
+    printf("%s", buffer);
 
     commandHandle();
 
@@ -188,7 +188,7 @@ void Client::readCommand()
     printf("<< %s\n", buffer);
     if (ok == "OK")
     {
-        sendMessage("OK");
+        sendMessage((char *)"OK");
         receiveMessage(buffer);
 
         printf("<< %s\n", buffer);

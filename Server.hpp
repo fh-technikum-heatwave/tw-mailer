@@ -43,7 +43,8 @@ private:
     pid_t pid;
     bool authenticated = false;
     int loginAttempts = 3;
-    char *OK_MESSAGE = "OK";
+    char *OK_MESSAGE = (char *)"OK";
+    char *ERR_MESSAGE = (char *)"ERR";
 
     void createSocket();
     void setupConnection();

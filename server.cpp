@@ -69,8 +69,6 @@ void Server::clientCommunication()
         exit(EXIT_FAILURE);
         // return NULL;
     }
-
-    int size;
     do
     {
         receivemessage(buffer);
@@ -92,7 +90,7 @@ void Server::handleCommands(char *buffer)
         }
         else
         {
-            sendMessage("ERR"); // unauthorized User
+            sendMessage(ERR_MESSAGE); // unauthorized User
         }
 
         return;
@@ -128,7 +126,7 @@ void Server::handleCommands(char *buffer)
     }
 
     cout << "ungültiger Befehl\n";
-    sendMessage("ERR");
+    sendMessage(ERR_MESSAGE);
 }
 
 void Server::login(char *buffer)
@@ -144,7 +142,7 @@ void Server::login(char *buffer)
     if (isBlackListed())
     {
         cout << " BlackList if \n";
-        sendMessage("ERR");
+        sendMessage(ERR_MESSAGE);
         return;
     }
     else if (loginAttempts == 0)
@@ -159,7 +157,7 @@ void Server::login(char *buffer)
     if (!isAuth)
     {
         loginAttempts--;
-        sendMessage("ERR");
+        sendMessage(ERR_MESSAGE);
         if (loginAttempts == 0)
         {
             // Im File speichern
@@ -190,60 +188,30 @@ bool Server::isBlackListed()
     }
 
     string line;
-
     mutex mtx;
 
     mtx.lock();
     bool found = false;
-    cout << "before while loop" << endl;
 
-    fflush(stdout);
     while (getline(file, line))
     {
-        cout << "in while loop \n"
-             << endl;
         string blackListedIp = line.substr(0, line.find(";"));
         if (ipAdress == blackListedIp)
         {
-            cout << "in ipaddres == blacklistedip \n"
-                 << endl;
-
-            fflush(stdout);
-            cout << "line 211" + line << endl;
-            fflush(stdout);
-
             if (line.find(";") != string::npos)
             {
-                cout << "in if 215" << endl;
                 string temp = line.substr(line.find(";"));
-                cout << "temp " + temp << endl;
-                cout << "lIne " + line << endl;
-                fflush(stdout);
-                cout << "tempsubstring " + temp.substr(1) << endl;
-                cout << temp.substr(1) + " > " + to_string(time(0)) << endl;
-                fflush(stdout);
-                fflush(stdout);
                 found = stoi(temp.substr(1)) > time(0);
-                cout << found
-                     << endl;
-            }
-            else
-            {
-                cout << "in else \n"
-                     << endl;
             }
 
             break;
         }
     }
-    fflush(stdout);
 
-    cout << "after while loop" << endl;
+
     file.close();
     mtx.unlock();
 
-    cout << "LINE 213 " + found << endl;
-    fflush(stdout);
     if (!found)
         eraseFileLine("./blacklist.txt", line);
 
@@ -263,7 +231,7 @@ void Server::deleteMail(char *buffer)
 
     if (foundPath == -1)
     {
-        sendMessage("ERR");
+        sendMessage(ERR_MESSAGE);
     }
     else if (foundPath == 0)
     {
@@ -313,7 +281,7 @@ void Server::readMail(char *buffer)
     if (foundPath == -1)
     {
         cout << "ISNDIE" << endl;
-        sendMessage("ERR");
+        sendMessage(ERR_MESSAGE);
     }
     else if (foundPath == 0)
     {
@@ -323,7 +291,7 @@ void Server::readMail(char *buffer)
 
         if (output.length() == 0)
         {
-            sendMessage("ERR");
+            sendMessage(ERR_MESSAGE);
             return;
         }
 
@@ -337,7 +305,7 @@ void Server::readMail(char *buffer)
         }
         else
         {
-            sendMessage("ERR");
+            sendMessage(ERR_MESSAGE);
         }
     }
 }
@@ -521,7 +489,7 @@ vector<string> Server::getUserMessages()
 
     if (foundPath == -1)
     {
-        sendMessage("0");
+        sendMessage((char *)"0");
     }
     else if (foundPath == 0)
     {
@@ -535,7 +503,6 @@ vector<string> Server::getUserMessages()
 bool Server::ldapAuth(string username, string password)
 {
     LDAP *ld;
-    char *dn;
     int version, rc;
 
     string tempRoot = "uid=" + username + ",ou=People,dc=technikum-wien,dc=at";
@@ -592,10 +559,10 @@ bool Server::ldapAuth(string username, string password)
     else
     {
         printf("bind successful\n");
-        return true;
     }
 
     ldap_unbind_ext(ld, NULL, NULL);
+    return true;
 }
 
 auto Server::read_file(std::string_view path) -> std::string
@@ -621,7 +588,7 @@ void Server::writeToFile(string filename, string message)
     mtx.lock();
     fp = fopen(filename.c_str(), "w");
 
-    for (int i = 0; i < message.size(); i++)
+    for (size_t i = 0; i < message.size(); i++)
     {
         /* write to file using fputc() function */
         fputc(message[i], fp);
