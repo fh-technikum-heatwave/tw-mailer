@@ -23,6 +23,7 @@
 #include <ldap.h>
 #include <ldap_cdefs.h>
 #include <ctime>
+#include <sys/wait.h>
 
 namespace fs = std::filesystem;
 using namespace std;

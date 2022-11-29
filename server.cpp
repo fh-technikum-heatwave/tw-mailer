@@ -15,7 +15,7 @@ void Server::run()
     address.sin_addr.s_addr = inet_addr("127.0.0.1");
     address.sin_port = htons(PORT);
 
-    setupConnection(); // In dieser Methode finden das listen und binden statt
+    setupConnection(); // in this method the bind and listen are called
 
     while (1)
     {
@@ -53,6 +53,16 @@ void Server::run()
             perror("close create_socket");
         }
         create_socket = -1;
+    }
+
+    // Wait for all child process
+    pid_t childpid;
+    while (childpid = waitpid(-1, NULL, WNOHANG))
+    {
+        if ((childpid == -1) && (errno != EINTR))
+        {
+            break;
+        }
     }
 }
 
@@ -138,6 +148,16 @@ void Server::login(char *buffer)
     receivemessage(buffer);
     string password = buffer;
 
+    for (size_t i = 0; i < user.size(); i++)
+    {
+        if ((user.size() > 8) || !(user[i] >= 'a' && user[i] <= 'z') && !(user[i] >= '0' && user[i] <= '9'))
+        {
+            cout << "Invalid Username" << endl;
+            sendMessage(ERR_MESSAGE);
+            return;
+        }
+    }
+
     cout << " in Login Attempts first if \n";
     if (isBlackListed())
     {
@@ -208,7 +228,6 @@ bool Server::isBlackListed()
         }
     }
 
-
     file.close();
     mtx.unlock();
 
@@ -221,13 +240,15 @@ bool Server::isBlackListed()
 void Server::deleteMail(char *buffer)
 {
     string tempPath = mailDirectoryName + "/" + username + "/";
-    // TODO: Change to mail number
+
     receivemessage(buffer);
     string mail_subject = buffer;
 
     vector<string> filenames;
 
     int foundPath = stat(tempPath.c_str(), &st);
+
+    bool fileIsDeleted = false;
 
     if (foundPath == -1)
     {
@@ -240,9 +261,15 @@ void Server::deleteMail(char *buffer)
             if (mail_subject == entry.path().stem().c_str())
             {
                 remove(entry.path());
+                fileIsDeleted = true;
                 sendMessage(OK_MESSAGE);
                 break;
             }
+        }
+
+        if (!fileIsDeleted)
+        {
+            sendMessage(ERR_MESSAGE);
         }
     }
 }
@@ -271,7 +298,7 @@ void Server::allMails(char *buffer)
 void Server::readMail(char *buffer)
 {
     string tempPath = mailDirectoryName + "/" + username + "/";
-    
+
     receivemessage(buffer);
     string mail_subject = buffer;
 
