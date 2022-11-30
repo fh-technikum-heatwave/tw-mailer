@@ -57,7 +57,7 @@ void Server::run()
 
     // Wait for all child process
     pid_t childpid;
-    while (childpid = waitpid(-1, NULL, WNOHANG))
+    while ((childpid = waitpid(-1, NULL, WNOHANG)))
     {
         if ((childpid == -1) && (errno != EINTR))
         {
@@ -68,7 +68,6 @@ void Server::run()
 
 void Server::clientCommunication()
 {
-
     char buffer[BUF];
     int current_socket = client_socket;
 
@@ -105,7 +104,7 @@ void Server::handleCommands(char *buffer)
 
         return;
     }
-
+    
     if (command == "SEND")
     {
         sendMessage(OK_MESSAGE);
@@ -141,7 +140,6 @@ void Server::handleCommands(char *buffer)
 
 void Server::login(char *buffer)
 {
-
     receivemessage(buffer);
     string user = buffer;
 
@@ -167,12 +165,11 @@ void Server::login(char *buffer)
     }
     else if (loginAttempts == 0)
     {
-
         loginAttempts = 3;
     }
 
     bool isAuth = ldapAuth(user, password);
-    mutex mtx;
+    mutex mtx; // ?!?!?!?
 
     if (!isAuth)
     {

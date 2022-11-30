@@ -158,7 +158,7 @@ void Client::sendCommand()
     {
         printf("%s", send_fields[i]);
         fgets(buffer, BUF, stdin);
-        if (i == send_fields_length - 1 && strlen(buffer) > 80)
+        if (i == 1 && strlen(buffer) > 80)
         {
             printf("Subject can not be longer than 80 chars");
             return;
